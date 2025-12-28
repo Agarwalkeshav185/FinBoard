@@ -134,10 +134,11 @@ export const exploreJSONPaths = (obj, prefix = '', maxDepth = 5) => {
 /**
  * Transform API response based on field mappings
  * @param {object} data - Raw API response
- * @param {Array} fieldMappings - Array of {apiPath, displayName} mappings
+ * @param {Array} fieldMappings - Array of {path, displayName} mappings
+ * @param {string} widgetType - 'table', 'chart', or 'card'
  * @returns {Array} - Transformed data array
  */
-export const transformAPIData = (data, fieldMappings) => {
+export const transformAPIData = (data, fieldMappings, widgetType = 'table') => {
   if (!data || !fieldMappings || fieldMappings.length === 0) {
     return [];
   }
@@ -146,26 +147,31 @@ export const transformAPIData = (data, fieldMappings) => {
   if (Array.isArray(data)) {
     return data.map((item) => {
       const transformed = {};
-      fieldMappings.forEach(({ apiPath, displayName }) => {
-        transformed[displayName] = getNestedValue(item, apiPath);
+      fieldMappings.forEach(({ path, displayName }) => {
+        const value = getNestedValue(item, path);
+        transformed[displayName] = value;
       });
       return transformed;
     });
   }
 
-  // If data is object with array property, try to find it
-  const arrayPath = fieldMappings.find(f => f.isArray)?.apiPath;
-  if (arrayPath) {
-    const arrayData = getNestedValue(data, arrayPath);
-    if (Array.isArray(arrayData)) {
-      return transformAPIData(arrayData, fieldMappings);
-    }
+  // For charts with single object: convert selected fields into array of data points
+  if (widgetType === 'chart' && fieldMappings.length > 1) {
+    // Create array where each field becomes a data point
+    return fieldMappings.map(({ path, displayName }) => {
+      const value = getNestedValue(data, path);
+      return {
+        name: displayName,
+        value: parseFloat(value) || 0
+      };
+    });
   }
 
-  // Single object - wrap in array
+  // Single object - extract selected fields and wrap in array for table display
   const transformed = {};
-  fieldMappings.forEach(({ apiPath, displayName }) => {
-    transformed[displayName] = getNestedValue(data, apiPath);
+  fieldMappings.forEach(({ path, displayName }) => {
+    const value = getNestedValue(data, path);
+    transformed[displayName] = value;
   });
   return [transformed];
 };
