@@ -21,7 +21,7 @@ import { CSS } from '@dnd-kit/utilities';
 import useDashboardStore from '@/store/dashboardStore';
 import Button from './ui/Button';
 import AddWidgetModalNew from './modals/AddWidgetModalNew';
-import WidgetContainerNew from './widgets/WidgetContainerNew';
+import WidgetContainer from './widgets/WidgetContainer';
 
 function SortableWidget({ widget }) {
   const {
@@ -39,7 +39,7 @@ function SortableWidget({ widget }) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <WidgetContainerNew widget={widget} dragListeners={listeners} />
+      <WidgetContainer widget={widget} dragListeners={listeners} />
     </div>
   );
 }
