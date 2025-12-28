@@ -1,15 +1,90 @@
 // Dynamic API service for fetching data from any financial API endpoint
-// Handles CORS proxying, error handling, and data transformation
+// Handles CORS proxying, error handling, data transformation, and intelligent caching
 
 const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/'; // Fallback for CORS issues
 
+// Cache storage: { url: { data, timestamp, expiresAt } }
+const apiCache = new Map();
+
+const DEFAULT_CACHE_DURATION = 5 * 1000; // 5 seconds
+
 /**
- * Fetch data from any API endpoint
+ * Get cached data if available and not expired
+ * @param {string} url - The API endpoint URL
+ * @returns {object|null} - Cached data or null
+ */
+const getCachedData = (url) => {
+  const cached = apiCache.get(url);
+  if (!cached) return null;
+
+  const now = Date.now();
+  if (now > cached.expiresAt) {
+    // Cache expired, remove it
+    apiCache.delete(url);
+    return null;
+  }
+
+  console.log(`[Cache HIT] Using cached data for: ${url}`);
+  return cached.data;
+};
+
+/**
+ * Store data in cache
+ * @param {string} url - The API endpoint URL
+ * @param {object} data - Data to cache
+ * @param {number} duration - Cache duration in milliseconds
+ */
+const setCachedData = (url, data, duration = DEFAULT_CACHE_DURATION) => {
+  const now = Date.now();
+  apiCache.set(url, {
+    data,
+    timestamp: now,
+    expiresAt: now + duration,
+  });
+  console.log(`[Cache SET] Cached data for ${duration/1000}s: ${url}`);
+};
+
+/**
+ * Clear expired cache entries
+ */
+const clearExpiredCache = () => {
+  const now = Date.now();
+  let cleared = 0;
+  
+  for (const [url, cached] of apiCache.entries()) {
+    if (now > cached.expiresAt) {
+      apiCache.delete(url);
+      cleared++;
+    }
+  }
+  
+  if (cleared > 0) {
+    console.log(`[Cache CLEANUP] Removed ${cleared} expired entries`);
+  }
+};
+
+// Clear expired cache every minute
+setInterval(clearExpiredCache, 60 * 1000);
+
+/**
+ * Fetch data from any API endpoint with intelligent caching
  * @param {string} url - The API endpoint URL
  * @param {object} options - Fetch options (headers, method, etc.)
+ * @param {boolean} useCache - Whether to use cache (default: true)
+ * @param {number} cacheDuration - Cache duration in seconds (default: 30)
  * @returns {Promise<any>} - Parsed JSON response
  */
-export const fetchFromAPI = async (url, options = {}) => {
+export const fetchFromAPI = async (url, options = {}, useCache = true, cacheDuration = 30) => {
+  // Check cache first
+  if (useCache) {
+    const cachedData = getCachedData(url);
+    if (cachedData) {
+      return { success: true, data: cachedData, error: null, cached: true };
+    }
+  }
+
+  console.log(`[API CALL] Fetching: ${url}`);
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -24,11 +99,18 @@ export const fetchFromAPI = async (url, options = {}) => {
     }
 
     const data = await response.json();
-    return { success: true, data, error: null };
+    
+    // Cache successful response
+    if (useCache) {
+      setCachedData(url, data, cacheDuration * 1000);
+    }
+
+    return { success: true, data, error: null, cached: false };
   } catch (error) {
     // Try with CORS proxy if direct fetch fails
     if (error.message.includes('CORS') || error.name === 'TypeError') {
       try {
+        console.log(`[CORS Proxy] Retrying with proxy: ${url}`);
         const proxyResponse = await fetch(CORS_PROXY + url, {
           ...options,
           headers: {
@@ -42,7 +124,13 @@ export const fetchFromAPI = async (url, options = {}) => {
         }
         
         const data = await proxyResponse.json();
-        return { success: true, data, error: null };
+        
+        // Cache successful response
+        if (useCache) {
+          setCachedData(url, data, cacheDuration * 1000);
+        }
+
+        return { success: true, data, error: null, cached: false };
       } catch (proxyError) {
         return {
           success: false,
@@ -182,7 +270,8 @@ export const transformAPIData = (data, fieldMappings, widgetType = 'table') => {
  * @returns {Promise<object>} - Test result with sample data and paths
  */
 export const testAPIEndpoint = async (url) => {
-  const result = await fetchFromAPI(url);
+  // Don't use cache for testing, always fetch fresh
+  const result = await fetchFromAPI(url, {}, false);
   
   if (result.success) {
     const paths = exploreJSONPaths(result.data);
@@ -195,4 +284,45 @@ export const testAPIEndpoint = async (url) => {
   }
   
   return result;
+};
+
+/**
+ * Clear all cached data
+ */
+export const clearAllCache = () => {
+  const size = apiCache.size;
+  apiCache.clear();
+  console.log(`[Cache CLEAR] Cleared ${size} entries`);
+  return size;
+};
+
+/**
+ * Clear cache for specific URL
+ * @param {string} url - The API endpoint URL
+ */
+export const clearCacheForUrl = (url) => {
+  const existed = apiCache.delete(url);
+  if (existed) {
+    console.log(`[Cache DELETE] Cleared cache for: ${url}`);
+  }
+  return existed;
+};
+
+/**
+ * Get cache statistics
+ */
+export const getCacheStats = () => {
+  const now = Date.now();
+  const entries = Array.from(apiCache.entries());
+  
+  return {
+    totalEntries: entries.length,
+    activeEntries: entries.filter(([, cache]) => now <= cache.expiresAt).length,
+    expiredEntries: entries.filter(([, cache]) => now > cache.expiresAt).length,
+    urls: entries.map(([url, cache]) => ({
+      url,
+      age: Math.floor((now - cache.timestamp) / 1000),
+      expiresIn: Math.max(0, Math.floor((cache.expiresAt - now) / 1000)),
+    })),
+  };
 };

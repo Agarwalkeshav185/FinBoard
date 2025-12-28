@@ -20,12 +20,33 @@ export default function WidgetContainer({ widget, dragListeners }) {
   });
 
   // Fetch data from API
-  const fetchData = async () => {
+  const fetchData = async (skipCache = false) => {
     if (!widget.apiUrl) return;
 
     setWidgetLoading(widget.id, true);
 
-    const result = await fetchFromAPI(widget.apiUrl);
+    // Smart cache duration for finance data:
+    // - For fast refresh (< 30s): cache for 3-5 seconds only
+    // - For medium refresh (30-120s): cache for 1/4 of refresh interval
+    // - For slow refresh (> 120s): cache for max 30 seconds
+    // This ensures stock prices stay fresh while reducing API calls
+    let cacheDuration;
+    if (skipCache) {
+      cacheDuration = 0;
+    } else if (widget.refreshInterval < 30) {
+      cacheDuration = Math.min(5, widget.refreshInterval / 3); // Max 5s for fast refresh
+    } else if (widget.refreshInterval < 120) {
+      cacheDuration = widget.refreshInterval / 4; // 1/4 of interval for medium
+    } else {
+      cacheDuration = Math.min(30, widget.refreshInterval / 4); // Max 30s for slow
+    }
+
+    const result = await fetchFromAPI(
+      widget.apiUrl, 
+      {}, 
+      !skipCache, 
+      cacheDuration
+    );
 
     if (result.success) {
       // Transform data based on selected fields and widget type
@@ -33,8 +54,13 @@ export default function WidgetContainer({ widget, dragListeners }) {
         ? transformAPIData(result.data, widget.selectedFields, widget.type)
         : result.data;
 
-      updateWidgetData(widget.id, transformedData, null);
-    } else {
+      // Log cache status
+      if (result.cached) {
+        console.log(`[Widget ${widget.name}] Using cached data (age: ${Math.floor((Date.now() - result.cacheAge) / 1000)}s)`);
+      } else {
+        console.log(`[Widget ${widget.name}] Fresh API call - data cached for ${cacheDuration}s`);
+      }
+    } else{
       updateWidgetData(widget.id, null, result.error);
     }
   };
@@ -158,7 +184,7 @@ export default function WidgetContainer({ widget, dragListeners }) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                fetchData();
+                fetchData(true); // Skip cache, force fresh fetch
               }}
               className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
               title="Refresh now"
