@@ -54,13 +54,14 @@ export default function WidgetContainer({ widget, dragListeners }) {
         ? transformAPIData(result.data, widget.selectedFields, widget.type)
         : result.data;
 
+      updateWidgetData(widget.id, transformedData, null);
       // Log cache status
       if (result.cached) {
         console.log(`[Widget ${widget.name}] Using cached data (age: ${Math.floor((Date.now() - result.cacheAge) / 1000)}s)`);
       } else {
         console.log(`[Widget ${widget.name}] Fresh API call - data cached for ${cacheDuration}s`);
       }
-    } else{
+    } else {
       updateWidgetData(widget.id, null, result.error);
     }
   };
