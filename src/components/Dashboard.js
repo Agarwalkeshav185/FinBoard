@@ -20,7 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import useDashboardStore from '@/store/dashboardStore';
 import Button from './ui/Button';
-import AddWidgetModalNew from './modals/AddWidgetModalNew';
+import AddWidgetModal from './modals/AddWidgetModal';
 import WidgetContainer from './widgets/WidgetContainer';
 
 function SortableWidget({ widget }) {
@@ -153,7 +153,7 @@ export default function Dashboard() {
       </main>
 
       {/* Add Widget Modal */}
-      <AddWidgetModalNew
+      <AddWidgetModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddWidget}
