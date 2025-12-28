@@ -5,7 +5,6 @@ A dynamic, real-time finance dashboard that lets you connect to **any financial 
 ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black)
 ![React](https://img.shields.io/badge/React-19.2.3-blue)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38bdf8)
-![License](https://img.shields.io/badge/license-MIT-green)
 
 ## ✨ Features
 
@@ -76,7 +75,7 @@ A dynamic, real-time finance dashboard that lets you connect to **any financial 
    ```
 
 4. **Open in browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+   Navigate to [https://fin-board-keshav.vercel.app/](https://fin-board-keshav.vercel.app/)
 
 ## 📖 Usage Guide
 
@@ -270,19 +269,6 @@ If API returns CORS errors, the system automatically tries with a CORS proxy (`h
 - Check widget refresh interval is appropriate
 - Cache automatically clears on widget delete/edit
 
-## 📝 License
-
-MIT License - feel free to use this project for learning or commercial purposes.
-
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-- Additional widget types (Candlestick charts, Pie charts)
-- Advanced filtering and sorting
-- Export/import dashboard configurations
-- User authentication
-- Widget resize functionality
-
 ## 🔗 Links
 
 - [Next.js Documentation](https://nextjs.org/docs)
@@ -291,5 +277,3 @@ Contributions welcome! Areas for improvement:
 - [Tailwind CSS](https://tailwindcss.com/)
 
 ---
-
-Built with ❤️ for real-time finance tracking
